@@ -12,15 +12,39 @@ param (
     [Parameter(Mandatory = $true)]
     [string]$subscriptionId,
 
+    [Parameter(Mandatory = $true)]
+    [string]$key,
+
+    [Parameter(Mandatory = $true)]
+    [string]$displayName,
+
     # Service Principal specific
     [string]$clientId,
     [string]$servicePrincipalSecret
 )
 
+# Connection with personal access token for GitHubSourceControl
+$gitHubPATConnection = @{
+    connectivityType = "ShareableCloud"
+    displayName = $displayName
+    connectionDetails = @{
+        type = "GitHubSourceControl"
+        creationMethod = "GitHubSourceControl.Contents"
+    }
+    credentialDetails = @{
+        credentials = @{
+            credentialType = "Key"
+            key = $key
+        }
+    }
+}
+
 # ================= GLOBAL VARIABLES =================
 $global:baseUrl = "https://api.fabric.microsoft.com/v1"
 $global:resourceUrl = "https://api.fabric.microsoft.com"
 $global:fabricHeaders = @{}
+
+$connection = $gitHubPATConnection
 
 # ================= AUTH FUNCTIONS =================
 function SetFabricHeaders {
@@ -51,7 +75,7 @@ function GetSecureTokenForUserPrincipal {
 }
 
 function GetSecureTokenForManagedIdentity {
-    Connect-AzAccount -Identity -TenantId $tenantId -Subscription $subscriptionId | Out-Null
+    Connect-AzAccount -Identity -TenantId $tenantId | Out-Null
     return (Get-AzAccessToken -AsSecureString -ResourceUrl $global:resourceUrl).Token
 }
 
@@ -77,52 +101,40 @@ function ConvertSecureStringToPlainText($secureString) {
     }
 }
 
-# ================= FABRIC FUNCTIONS =================
-function GetWorkspaceByName($workspaceName) {
-    $url = "$global:baseUrl/workspaces"
-    $workspaces = (Invoke-RestMethod -Headers $global:fabricHeaders -Uri $url -Method GET).value
-    return $workspaces | Where-Object { $_.DisplayName -eq $workspaceName }
+
+function GetErrorResponse($exception) {
+    # Relevant only for PowerShell Core
+    $errorResponse = $_.ErrorDetails.Message
+ 
+    if(!$errorResponse) {
+        # This is needed to support Windows PowerShell
+        if (!$exception.Response) {
+            return $exception.Message
+        }
+        $result = $exception.Response.GetResponseStream()
+        $reader = New-Object System.IO.StreamReader($result)
+        $reader.BaseStream.Position = 0
+        $reader.DiscardBufferedData()
+        $errorResponse = $reader.ReadToEnd();
+    }
+ 
+    return $errorResponse
 }
 
-# ================= MAIN =================
 try {
     SetFabricHeaders
-
-    $workspace = GetWorkspaceByName $workspaceName 
-    
-    # Verify the existence of the requested workspace
-	if(!$workspace) {
-	  Write-Host "A workspace with the requested name was not found." -ForegroundColor Red
-	  return
-	}
 	
-    # Get Status
-    Write-Host "Calling GET Status REST API to construct the request body for UpdateFromGit REST API."
+    Write-Host "Creating connection with Git provider credentials..."
 
-    $gitStatusUrl = "$global:baseUrl/workspaces/$($workspace.Id)/git/status"
-    $gitStatusResponse = Invoke-RestMethod -Headers $global:fabricHeaders -Uri $gitStatusUrl -Method GET
+    $connectionsUrl = "$global:baseUrl/connections"
 
-    # Update from Git
-    Write-Host "Updating the workspace '$workspaceName' from Git."
+    $connectionBody = $connection | ConvertTo-Json -Depth 10
 
-    $updateFromGitUrl = "$global:baseUrl/workspaces/$($workspace.Id)/git/updateFromGit"
+    $response = Invoke-RestMethod -Headers $global:fabricHeaders -Uri $connectionsUrl -Method POST -Body $connectionBody
 
-    $updateFromGitBody = @{ 
-        remoteCommitHash = $gitStatusResponse.RemoteCommitHash
-		workspaceHead = $gitStatusResponse.WorkspaceHead
-        options = @{
-            # Allows overwriting existing items if needed
-            allowOverrideItems = $TRUE
-        }
-    } | ConvertTo-Json
-
-    $updateFromGitResponse = Invoke-WebRequest -Headers $global:fabricHeaders -Uri $updateFromGitUrl -Method POST -Body $updateFromGitBody
-
-    $operationId = $updateFromGitResponse.Headers['x-ms-operation-id']
-    $retryAfter = $updateFromGitResponse.Headers['Retry-After']
-    Write-Host "Long Running Operation ID: '$operationId' has been scheduled for updating the workspace '$workspaceName' from Git with a retry-after time of '$retryAfter' seconds." -ForegroundColor Green
+    Write-Host "Connection created successfully! Connection ID: $($response.id)" -ForegroundColor Green
 
 } catch {
     $errorResponse = GetErrorResponse($_.Exception)
-    Write-Host "Failed to update the workspace '$workspaceName' from Git. Error reponse: $errorResponse" -ForegroundColor Red
+    Write-Host "Failed to create connection. . Error reponse: $errorResponse" -ForegroundColor Red
 }
