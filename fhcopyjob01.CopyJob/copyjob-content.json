@@ -1,0 +1,69 @@
+{
+  "properties": {
+    "jobMode": "Batch",
+    "source": {
+      "type": "Json",
+      "connectionSettings": {
+        "type": "AzureBlobStorage",
+        "externalReferences": {
+          "connection": "5a21f0a1-3bc7-4082-90b0-c76c29a37c2a"
+        }
+      }
+    },
+    "destination": {
+      "type": "LakehouseTable",
+      "connectionSettings": {
+        "type": "Lakehouse",
+        "typeProperties": {
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "artifactId": "d1baaa19-31ee-8691-4c5e-274549ea21e8",
+          "rootFolder": "Tables"
+        }
+      }
+    },
+    "policy": {
+      "timeout": "0.12:00:00"
+    }
+  },
+  "activities": [
+    {
+      "id": "9fc7b33f-2d29-4d95-9cff-c5156de650f0",
+      "properties": {
+        "source": {
+          "datasetSettings": {
+            "location": {
+              "type": "AzureBlobStorageLocation",
+              "fileName": "SpoctoJan2023.pdf.labels.json",
+              "container": "costest"
+            }
+          },
+          "storeSettings": {
+            "recursive": true,
+            "enablePartitionDiscovery": false
+          }
+        },
+        "destination": {
+          "writeBehavior": "Append",
+          "datasetSettings": {
+            "table": "SpoctoJan2023_pdf_labels"
+          }
+        },
+        "enableStaging": false,
+        "translator": {
+          "type": "TabularTranslator"
+        },
+        "typeConversionSettings": {
+          "typeConversion": {
+            "allowDataTruncation": true,
+            "treatBooleanAsNumber": false
+          }
+        },
+        "columnFlattenSettings": {
+          "expandArrayIntoMultipleRows": true,
+          "flattenNestedProperties": true,
+          "flattenColumnDelimiter": "."
+        }
+      }
+    }
+  ]
+}
