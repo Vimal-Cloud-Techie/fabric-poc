@@ -1,0 +1,38 @@
+name: Update Fabric Workspace from Git
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-fabric:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install PowerShell
+        uses: PowerShell/PowerShell@v1
+
+      - name: Install Az PowerShell modules
+        shell: pwsh
+        run: |
+          Install-Module Az.Accounts -Repository PSGallery -Force -AllowClobber
+
+      - name: Run Fabric update script
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: |
+          pwsh ./update-fabric-workspace.ps1 `
+            -workspaceName "Fabric-Prod" `
+            -principalType "ManagedIdentity" `
+            -tenantId $env:TENANT_ID `
+            -subscriptionId $env:SUBSCRIPTION_ID `
+            -clientId $env:CLIENT_ID `
+            -servicePrincipalSecret $env:CLIENT_SECRET
