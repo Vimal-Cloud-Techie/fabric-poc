@@ -13,14 +13,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install specific PowerShell 7 version
-        uses: PSModule/Install-PowerShell@v2 # Use the action
-
-      - name: Install Az PowerShell modules
-        shell: pwsh
-        run: |
-          Install-Module Az.Accounts -Repository PSGallery -Force -AllowClobber
-
       - name: Run Fabric update script
         shell: pwsh
         env:
