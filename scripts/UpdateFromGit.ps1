@@ -144,4 +144,6 @@ try {
 } catch {
     $errorResponse = GetErrorResponse($_.Exception)
     Write-Host "Failed to update the workspace '$workspaceName' from Git. Error reponse: $errorResponse" -ForegroundColor Red
+    Write-Error $_
+    exit 1
 }
