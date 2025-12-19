@@ -13,8 +13,8 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install PowerShell
-        uses: PowerShell/PowerShell@v1
+      - name: Install specific PowerShell 7 version
+        uses: PSModule/Install-PowerShell@v2 # Use the action
 
       - name: Install Az PowerShell modules
         shell: pwsh
