@@ -67,6 +67,25 @@ function GetSecureTokenForServicePrincipal {
     return (Get-AzAccessToken -AsSecureString -ResourceUrl $global:resourceUrl).Token
 }
 
+function GetErrorResponse($exception) {
+    # Relevant only for PowerShell Core
+    $errorResponse = $_.ErrorDetails.Message
+ 
+    if(!$errorResponse) {
+        # This is needed to support Windows PowerShell
+        if (!$exception.Response) {
+            return $exception.Message
+        }
+        $result = $exception.Response.GetResponseStream()
+        $reader = New-Object System.IO.StreamReader($result)
+        $reader.BaseStream.Position = 0
+        $reader.DiscardBufferedData()
+        $errorResponse = $reader.ReadToEnd();
+    }
+ 
+    return $errorResponse
+}
+
 function ConvertSecureStringToPlainText($secureString) {
     $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureString)
     try {
