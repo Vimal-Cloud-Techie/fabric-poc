@@ -128,10 +128,6 @@ try
     $updateFromGitBody = @{ 
         remoteCommitHash = $gitStatusResponse.RemoteCommitHash
 		workspaceHead = $gitStatusResponse.WorkspaceHead
-        options = @{
-            # Allows overwriting existing items if needed
-            allowOverrideItems = $TRUE
-        }
     } | ConvertTo-Json
 
     $updateFromGitResponse = Invoke-WebRequest -Headers $global:fabricHeaders -Uri $updateFromGitUrl -Method POST -Body $updateFromGitBody
@@ -171,8 +167,9 @@ try
     }
 }
 catch {
-    $errorResponse = GetErrorResponse($_.Exception)
+    $exception = if ($error[0] -and $error[0].Exception) { $error[0].Exception } else { $_ }
+    $errorResponse = GetErrorResponse($exception)
     Write-Host "Failed to update the workspace '$workspaceName' from Git. Error reponse: $errorResponse" -ForegroundColor Red
-    Write-Error $_
+    Write-Error $exception
     exit 1
 }
