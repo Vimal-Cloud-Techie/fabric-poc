@@ -157,11 +157,11 @@ function storegitprovidercredentials {
         Write-Error $_
         exit 1
     }
-    $connectionId=$response.id
-    return $connectionId
+    $connection=$response.id
+    return $connection
 }
 
-$connectionId=storegitprovidercredentials $connectionId
+$connectionId=storegitprovidercredentials $connection
 
 $configuredConnectionGitCredentials = @{
     source = "ConfiguredConnection"
