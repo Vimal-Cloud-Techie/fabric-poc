@@ -13,6 +13,16 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Install PowerShell
+        uses: PowerShell/PowerShell@v1.2.0
+        with:
+          pwsh-version: 'latest'
+    
+      - name: Install Az PowerShell module
+        shell: pwsh
+        run: |
+          Install-Module -Name Az -Force -Scope CurrentUser
+
       - name: Run Fabric update script
         shell: pwsh
         env:
@@ -23,10 +33,8 @@ jobs:
         run: |
           pwsh -File ./scripts/UpdateFromGit.ps1 `
             -workspaceName "Fabric-Prod" `
-            -principalType "ManagedIdentity" `
+            -principalType "ServicePrincipal" `
             -tenantId $env:TENANT_ID `
             -subscriptionId $env:SUBSCRIPTION_ID `
-            -key $env:GITHUB_TOKEN `
-            -displayName ${{ github.run_id }} `
             -clientId $env:CLIENT_ID `
             -servicePrincipalSecret $env:CLIENT_SECRET
