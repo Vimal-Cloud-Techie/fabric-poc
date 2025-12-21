@@ -43,6 +43,7 @@ function SetFabricHeaders {
         'Content-Type'  = "application/json"
         'Authorization' = "Bearer $fabricToken"
     }
+    Write-Host $fabricToken
 }
 
 # ================ AUTH HELPER FUNCTIONS =================
@@ -128,6 +129,10 @@ try
     $updateFromGitBody = @{ 
         remoteCommitHash = $gitStatusResponse.RemoteCommitHash
 		workspaceHead = $gitStatusResponse.WorkspaceHead
+        options = @{
+            # Allows overwriting existing items if needed
+            allowOverrideItems = $TRUE
+        }
     } | ConvertTo-Json
 
     $updateFromGitResponse = Invoke-WebRequest -Headers $global:fabricHeaders -Uri $updateFromGitUrl -Method POST -Body $updateFromGitBody
