@@ -163,6 +163,8 @@ try
 
     if ($operationState.Status -eq "Failed") {
         Write-Host "Failed to update the workspace '$workspaceName' with content from Git. Error reponse: $($operationState.Error | ConvertTo-Json)" -ForegroundColor Red
+        Write-Error $_
+        exit 1
     }
     else{
         Write-Host "The workspace '$workspaceName' has been successfully updated with content from Git." -ForegroundColor Green
