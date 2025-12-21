@@ -12,17 +12,40 @@ param (
     [Parameter(Mandatory = $true)]
     [string]$subscriptionId,
 
+    [Parameter(Mandatory = $true)]
+    [string]$key,
+
+    [Parameter(Mandatory = $true)]
+    [string]$displayName,
+
     # Service Principal specific
     [string]$clientId,
     [string]$servicePrincipalSecret
 )
+
+# Connection with personal access token for GitHubSourceControl
+$gitHubPATConnection = @{
+    connectivityType = "ShareableCloud"
+    displayName = $displayName
+    connectionDetails = @{
+        type = "GitHubSourceControl"
+        creationMethod = "GitHubSourceControl.Contents"
+    }
+    credentialDetails = @{
+        credentials = @{
+            credentialType = "Key"
+            key = $key
+        }
+    }
+}
+$connection = $gitHubPATConnection
 
 # ================= GLOBAL VARIABLES =================
 $global:baseUrl = "https://api.fabric.microsoft.com/v1"
 $global:resourceUrl = "https://api.fabric.microsoft.com"
 $global:fabricHeaders = @{}
 
-# ================= AUTH FUNCTIONS =================
+# ================ AUTH FUNCTIONS =================
 function SetFabricHeaders {
     if ($principalType -eq "UserPrincipal") {
         $secureFabricToken = GetSecureTokenForUserPrincipal
@@ -43,6 +66,7 @@ function SetFabricHeaders {
         'Content-Type'  = "application/json"
         'Authorization' = "Bearer $fabricToken"
     }
+    write-Host "Fabric headers set successfully $($global:fabricHeaders)." -ForegroundColor Green
 }
 
 function GetSecureTokenForUserPrincipal {
@@ -61,12 +85,25 @@ function GetSecureTokenForServicePrincipal {
     }
 
     $secureSecret = ConvertTo-SecureString $servicePrincipalSecret -AsPlainText -Force
+    # $credential = New-Object System.Management.Automation.PSCredential ($clientId, $secureSecret)
     $credential = New-Object System.Management.Automation.PSCredential ($clientId, $secureSecret)
+
 
     Connect-AzAccount -ServicePrincipal -TenantId $tenantId -Credential $credential | Out-Null
     return (Get-AzAccessToken -AsSecureString -ResourceUrl $global:resourceUrl).Token
 }
 
+function ConvertSecureStringToPlainText($secureString) {
+    $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureString)
+    try {
+        return [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+    }
+    finally {
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+    }
+}
+
+# ================= ERROR RESPONSE HANDLING =================
 function GetErrorResponse($exception) {
     # Relevant only for PowerShell Core
     $errorResponse = $_.ErrorDetails.Message
@@ -86,26 +123,85 @@ function GetErrorResponse($exception) {
     return $errorResponse
 }
 
-function ConvertSecureStringToPlainText($secureString) {
-    $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureString)
-    try {
-        return [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
-    }
-    finally {
-        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
-    }
-}
+# ================ SET HEADERS =================
+SetFabricHeaders
 
-# ================= FABRIC FUNCTIONS =================
+# ================ GET WORKSPACE =================
 function GetWorkspaceByName($workspaceName) {
-    $url = "$global:baseUrl/workspaces"
-    $workspaces = (Invoke-RestMethod -Headers $global:fabricHeaders -Uri $url -Method GET).value
-    return $workspaces | Where-Object { $_.DisplayName -eq $workspaceName }
+    # Get workspaces    
+    $getWorkspacesUrl = "$global:baseUrl/workspaces"
+    $workspaces = (Invoke-RestMethod -Headers $global:fabricHeaders -Uri $getWorkspacesUrl -Method GET).value
+
+    # Try to find the workspace by display name
+    $workspace = $workspaces | Where-Object {$_.DisplayName -eq $workspaceName}
+
+    return $workspace
 }
 
-# ================= MAIN =================
+# ================ STORE GIT PROVIDER CREDENTIALS =================
+function storegitprovidercredentials {
+    try {	
+        Write-Host "Creating connection with Git provider credentials..."
+
+        $connectionsUrl = "$global:baseUrl/connections"
+
+        $connectionBody = $connection | ConvertTo-Json -Depth 10
+
+        $response = Invoke-RestMethod -Headers $global:fabricHeaders -Uri $connectionsUrl -Method POST -Body $connectionBody
+
+        Write-Host "Connection created successfully! Connection ID: $($response.id)" -ForegroundColor Green
+
+    } catch {
+        $errorResponse = GetErrorResponse($_.Exception)
+        Write-Host "Failed to create connection. . Error reponse: $errorResponse" -ForegroundColor Red
+        Write-Error $_
+        exit 1
+    }
+    $connectionId=$response.id
+    return $connectionId
+}
+
+$connectionId=storegitprovidercredentials $connectionId
+
+$configuredConnectionGitCredentials = @{
+    source = "ConfiguredConnection"
+    connectionId = $connectionId
+}
+
+$myGitCredentials = $configuredConnectionGitCredentials
+
+# ================ PREPARE GIT CREDENTIALS =================
+function updategitcredential{
+    try {
+        $workspace = GetWorkspaceByName $workspaceName 
+        
+        # Verify the existence of the requested workspace
+        if(!$workspace) {
+        Write-Host "A workspace with the requested name was not found." -ForegroundColor Red
+        return
+        }
+        
+        # Update Git Credentials
+        Write-Host "Updating the Git credentials for the current user in the workspace '$workspaceName'."
+
+        $updateMyGitCredentialsUrl = "$global:baseUrl/workspaces/$($workspace.Id)/git/myGitCredentials"
+
+        $updateMyGitCredentialsBody = $myGitCredentials | ConvertTo-Json
+
+        Invoke-RestMethod -Headers $global:fabricHeaders -Uri $updateMyGitCredentialsUrl -Method PATCH -Body $updateMyGitCredentialsBody
+
+        Write-Host "The Git credentials has been successfully updated for the current user in the workspace '$workspaceName'." -ForegroundColor Green
+
+    }catch {
+        $errorResponse = GetErrorResponse($_.Exception)
+        Write-Host "Failed to update the Git credentials for the current user in the workspace '$workspaceName'. Error reponse: $errorResponse" -ForegroundColor Red
+        Write-Error $_
+        exit 1
+    }
+}
+# ================ MAIN SCRIPT =================
 try {
-    SetFabricHeaders
+    updategitcredential
 
     $workspace = GetWorkspaceByName $workspaceName 
     
