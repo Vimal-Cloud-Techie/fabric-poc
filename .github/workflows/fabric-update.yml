@@ -13,16 +13,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install PowerShell
-        uses: PowerShell/PowerShell@v1.2.0
-        with:
-          pwsh-version: 'latest'
-    
-      - name: Install Az PowerShell module
-        shell: pwsh
-        run: |
-          Install-Module -Name Az -Force -Scope CurrentUser
-
       - name: Run Fabric update script
         shell: pwsh
         env:
