@@ -26,7 +26,7 @@ jobs:
             -principalType "ManagedIdentity" `
             -tenantId $env:TENANT_ID `
             -subscriptionId $env:SUBSCRIPTION_ID `
-            -key ${{github.token}} `
+            -key $env:GITHUB_TOKEN `
             -displayName ${{ github.run_id }} `
             -clientId $env:CLIENT_ID `
             -servicePrincipalSecret $env:CLIENT_SECRET
