@@ -43,7 +43,6 @@ function SetFabricHeaders {
         'Content-Type'  = "application/json"
         'Authorization' = "Bearer $fabricToken"
     }
-    Write-Host $fabricToken
 }
 
 # ================ AUTH HELPER FUNCTIONS =================
