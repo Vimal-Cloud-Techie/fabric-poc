@@ -22,7 +22,7 @@ jobs:
           CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: |
           pwsh -File ./scripts/UpdateFromGit.ps1 `
-            -workspaceName "Fabric-Prod" `
+            -workspaceName "Fabric-POC-Prod" `
             -principalType "ServicePrincipal" `
             -tenantId $env:TENANT_ID `
             -subscriptionId $env:SUBSCRIPTION_ID `
