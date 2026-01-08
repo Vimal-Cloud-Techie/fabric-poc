@@ -12,6 +12,13 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        
+      - name: Install Az PowerShell module
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name Az -Repository PSGallery -Force -AllowClobber
+
 
       - name: Run Fabric update script
         shell: pwsh
