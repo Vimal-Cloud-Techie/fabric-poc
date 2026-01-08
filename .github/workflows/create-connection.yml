@@ -1,4 +1,4 @@
-name: Update Fabric Workspace from Git
+name: Create Git Connection Workspace
 
 on:
   push:
