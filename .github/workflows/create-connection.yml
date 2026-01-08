@@ -3,7 +3,7 @@ name: Update Fabric Workspace from Git
 on:
   push:
     branches:
-      - main
+      - none
 
 jobs:
   update-fabric:
@@ -27,10 +27,12 @@ jobs:
           CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: |
-          pwsh -File ./scripts/UpdateFromGit.ps1 `
+          pwsh -File ./scripts/CreateConnection.ps1 `
             -workspaceName "Fabric-Prod" `
             -principalType "ServicePrincipal" `
             -tenantId $env:TENANT_ID `
             -subscriptionId $env:SUBSCRIPTION_ID `
             -clientId $env:CLIENT_ID `
-            -servicePrincipalSecret $env:CLIENT_SECRET
+            -servicePrincipalSecret $env:CLIENT_SECRET `
+            -key $env:PAT_TOKEN `
+            -displayName "GitConnection"
